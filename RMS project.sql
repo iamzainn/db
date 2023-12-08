@@ -84,17 +84,23 @@ VALUES
     (23, 'Palak Paneer', 9.99, 30),
     (24, 'Dal Makhani', 8.49, 35),
     (25, 'Dehi bhlly', 7.99, 25);
-
+Drop table OrderDetails;
+  Drop table OrdersPayment;
+  Drop table Orders;
 
 	
-   
+ 
+-- Create Orders table
 CREATE TABLE Orders (
     OrderId INT PRIMARY KEY,
     Date_Of_Order DATE,
-    Time_Of_Order DATETIME
+    Time_Of_Order TIME
 );
 
+-- Drop Orders table if it exists
+  
 
+-- Create OrderDetails table
 CREATE TABLE OrderDetails (
     id INT,
     Order_Id INT,
@@ -111,53 +117,97 @@ CREATE TABLE OrderDetails (
     CONSTRAINT CHK_ORDERDETAILS_FoodQuantity CHECK (Food_Quantity >= 0)
 );
 
+-- Create OrdersPayment table
+-- Create OrdersPayment table
+CREATE TABLE OrdersPayment (
+    id INT PRIMARY KEY,
+    Order_Id INT,
+    Status VARCHAR(50),
+    PaymentMethod VARCHAR(50),
+    -- Add more columns as needed
+    CONSTRAINT FK_ORDERSPAYMENT_OrderDetailsId 
+        FOREIGN KEY (id, Order_Id) 
+        REFERENCES OrderDetails (id, Order_Id)
+);
 
--- Inserting sample data from January 2023 to August 2023
 DECLARE @Counter INT = 1;
-DECLARE @OrderDetailId INT = 101; -- Starting value for OrderDetails.id
+DECLARE @OrderDetailId INT = 101;
 
-WHILE @Counter <= 100
+WHILE @Counter <= 2000
 BEGIN
-    DECLARE @CustomerId INT = FLOOR(RAND() * 10) + 1; -- Random CustomerId
-    DECLARE @FoodId INT = FLOOR(RAND() * 25) + 1; -- Random FoodId
-    DECLARE @EmployeeId INT = FLOOR(RAND() * 10) + 1; -- Random EmployeeId
-    DECLARE @FoodQuantity INT = FLOOR(RAND() * 5) + 1; -- Random Food Quantity
+    DECLARE @CustomerId INT = FLOOR(RAND() * 10) + 1;
+    DECLARE @FoodId INT = FLOOR(RAND() * 25) + 1;
+    DECLARE @EmployeeId INT = FLOOR(RAND() * 10) + 1;
+    DECLARE @FoodQuantity INT = FLOOR(RAND() * 5) + 1;
     DECLARE @Discount NUMERIC(5, 2) = 0;
 
-    -- Apply discount for regular customers
     IF EXISTS (SELECT 1 FROM Customer WHERE CustomerID = @CustomerId AND CustomerType = 'Regular Customer')
     BEGIN
-        SET @Discount = 5.00; -- $5.00 discount for regular customers
+        SET @Discount = 5.00;
     END;
 
-    DECLARE @Month INT = FLOOR(RAND() * 8) + 1; -- Random month from 1 to 8
-    DECLARE @DaysInMonth INT = DAY(EOMONTH('2023-' + CAST(@Month AS NVARCHAR) + '-01')); -- Get the number of days in the selected month
+    DECLARE @Month INT = FLOOR(RAND() * 11) + 1;
+    DECLARE @DaysInMonth INT = DAY(EOMONTH('2023-' + CAST(@Month AS NVARCHAR) + '-01'));
+    DECLARE @RandomMinutes INT = FLOOR(RAND() * 1440);
 
     INSERT INTO Orders (OrderId, Date_Of_Order, Time_Of_Order)
     VALUES
-        (@Counter, DATEADD(DAY, FLOOR(RAND() * @DaysInMonth) + 1, '2023-' + CAST(@Month AS NVARCHAR) + '-01'), DATEADD(MINUTE, FLOOR(RAND() * 1440), '00:00:00'));
+        (@Counter, DATEADD(DAY, FLOOR(RAND() * @DaysInMonth) + 1, '2023-' + CAST(@Month AS NVARCHAR) + '-01'), 
+        DATEADD(MINUTE, @RandomMinutes, '00:00:00'));
 
     INSERT INTO OrderDetails (id, Order_Id, Food_Id, Customer_Id, Food_Quantity, Employee_Id, Discount)
     VALUES
         (@OrderDetailId, @Counter, @FoodId, @CustomerId, @FoodQuantity, @EmployeeId, @Discount);
 
+    -- Generate payment status and method randomly
+    DECLARE @CancellationChance INT = FLOOR(RAND() * 10) + 1; -- 1 out of 10 chance for cancellation
+    DECLARE @PaymentStatus VARCHAR(50) = CASE WHEN @CancellationChance = 1 THEN 'Cancelled' ELSE 'Fulfilled' END;
+    DECLARE @PaymentMethod VARCHAR(50) = CASE WHEN @PaymentStatus = 'Fulfilled' THEN 
+                                               CASE WHEN RAND() > 0.5 THEN 'Cash' ELSE 'Card' END 
+                                             ELSE NULL END;
+
+    INSERT INTO OrdersPayment (id, Order_Id, Status, PaymentMethod)
+    VALUES
+        (@OrderDetailId, @Counter, @PaymentStatus, @PaymentMethod);
+
     SET @Counter = @Counter + 1;
     SET @OrderDetailId = @OrderDetailId + 1;
 END;
 
-
-
-
-
-
-select * from orders;
+select * from Orders;
 select * from OrderDetails;
+select * from OrdersPayment;
 
-SELECT COUNT(*) AS RegularCustomerOrders
-FROM OrderDetails od
-JOIN Orders o ON od.Order_Id = o.OrderId
-JOIN Customer c ON od.Customer_Id = c.CustomerID
-WHERE c.CustomerType = 'Regular Customer'
-  AND o.Date_Of_Order >= '2023-02-01'
-  AND o.Date_Of_Order < '2023-03-01';
 
+
+
+
+
+
+CREATE TABLE Reservations (
+    ReservationId INT PRIMARY KEY,
+    Customer_Id INT,
+    Reservation_Date DATE,
+    Reservation_Time TIME,
+    Table_Number INT,
+    CONSTRAINT FK_RESERVATIONS_CustomerId FOREIGN KEY (Customer_Id) REFERENCES Customer (CustomerID)
+);
+
+DECLARE @ReservationCounter INT = 1;
+
+WHILE @ReservationCounter <= 500 
+BEGIN
+    DECLARE @CustomerForReservation INT = FLOOR(RAND() * 10) + 1; -- Random CustomerId for reservation
+    DECLARE @ReservationMonth INT = FLOOR(RAND() * 11) + 1; -- Random month from 1 to 11 for reservation
+    DECLARE @ReservationDaysInMonth INT = DAY(EOMONTH('2023-' + CAST(@ReservationMonth AS NVARCHAR) + '-01')); -- Get the number of days in the selected month
+    DECLARE @ReservationDate DATE = DATEADD(DAY, FLOOR(RAND() * @ReservationDaysInMonth) + 1, '2023-' + CAST(@ReservationMonth AS NVARCHAR) + '-01');
+    DECLARE @ReservationTime TIME = DATEADD(MINUTE, FLOOR(RAND() * 1440), '00:00:00');
+    DECLARE @ReservationTableNumber INT = FLOOR(RAND() * 15) + 1; -- Random table number from 1 to 15 for reservation
+    INSERT INTO Reservations (ReservationId, Customer_Id, Reservation_Date, Reservation_Time, Table_Number)
+    VALUES
+        (@ReservationCounter, @CustomerForReservation, @ReservationDate, @ReservationTime, @ReservationTableNumber);
+
+    SET @ReservationCounter = @ReservationCounter + 1;
+END;
+
+select * from Reservations;
