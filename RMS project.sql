@@ -165,8 +165,7 @@ Drop table OrderDetails;
   Drop table Reservations;
 
 	
- 
--- Create Orders table
+
 CREATE TABLE Orders (
     OrderId INT PRIMARY KEY,
     Date_Of_Order DATE,
@@ -245,75 +244,154 @@ BEGIN
     SET @OrderDetailId = @OrderDetailId + 1;
 END;
 
-select * from Orders;
-select * from OrderDetails;
-select * from OrdersPayment;
 
-
-
-
-
-
-
--- Drop tables if they exist
--- Drop tables if they exist
-DROP TABLE IF EXISTS Reservations_Payment;
-DROP TABLE IF EXISTS Reservations;
-
--- Create Reservations table
 CREATE TABLE Reservations (
     ReservationId INT PRIMARY KEY,
     Customer_Id INT,
     Reservation_Date DATE,
+	Payment_On_ReservationTime varchar(10),
+	Discount_On_Reservation Decimal (10,2),
     Reservation_Time TIME,
     Table_Number INT,
     CONSTRAINT FK_RESERVATIONS_CustomerId FOREIGN KEY (Customer_Id) REFERENCES Customer (CustomerID)
 );
 
--- Create Reservations_Payment table
-CREATE TABLE Reservations_Payment (
-    id INT PRIMARY KEY,
-    Res_id INT,
-    Status VARCHAR(255),
-    Discount DECIMAL(10,2),
-    CONSTRAINT FK_RESERVATIONSPAYMENT_ResId FOREIGN KEY (Res_id) REFERENCES Reservations (ReservationId)
-);
 
--- Generate random data for Reservations and Reservations_Payment
+Delete from Reservations;
+
 DECLARE @Counter INT = 1;
-DECLARE @ReservationId INT = 1;
 
-WHILE @Counter <= 500 -- Generate 500 rows for Reservations
+WHILE @Counter <= 500 -- You can adjust the number of rows as needed
 BEGIN
-    DECLARE @CustomerId INT = FLOOR(RAND() * 40) + 1;
-    DECLARE @TableNumber INT = FLOOR(RAND() * 15) + 1;
-    DECLARE @Month INT = FLOOR(RAND() * 12) + 1;
-    DECLARE @DaysInMonth INT = DAY(EOMONTH('2023-' + CAST(@Month AS NVARCHAR) + '-01'));
-    DECLARE @RandomMinutes INT = FLOOR(RAND() * 1440);
+    DECLARE @CustomerId INT = FLOOR(RAND() * 40) + 1; -- Random CustomerId
+    DECLARE @IsRegularCustomer BIT = CASE WHEN EXISTS (SELECT 1 FROM Customer WHERE CustomerID = @CustomerId AND CustomerType = 'Regular Customer') THEN 1 ELSE 0 END;
+    DECLARE @Discount DECIMAL(10,2) = CASE WHEN @IsRegularCustomer = 1 THEN 10.00 ELSE 0.00 END;
+    DECLARE @PaymentOnReservationTime VARCHAR(10) = CASE WHEN RAND() > 0.5 THEN 'yes' ELSE 'no' END;
 
-    INSERT INTO Reservations (ReservationId, Customer_Id, Reservation_Date, Reservation_Time, Table_Number)
+    INSERT INTO Reservations (ReservationId, Customer_Id, Reservation_Date, Payment_On_ReservationTime, Discount_On_Reservation, Reservation_Time, Table_Number)
     VALUES
-        (@ReservationId, @CustomerId, DATEADD(DAY, FLOOR(RAND() * @DaysInMonth) + 1, '2023-' + CAST(@Month AS NVARCHAR) + '-01'), 
-        DATEADD(MINUTE, @RandomMinutes, '00:00:00'), @TableNumber);
-
-    -- Get customer type and determine discount
-    DECLARE @CustomerType VARCHAR(50) = (SELECT CustomerType FROM Customer WHERE CustomerID = @CustomerId);
-    DECLARE @Discount DECIMAL(10, 2) = CASE WHEN @CustomerType = 'Regular Customer' AND RAND() > 0.9 THEN 10.00 ELSE 0.00 END;
-
-    -- Generate random data for Reservations_Payment
-    DECLARE @PaymentStatus VARCHAR(255) = CASE WHEN RAND() > 0.995 THEN 'Cancelled' ELSE 'Succeeded' END;
-
-    INSERT INTO Reservations_Payment (id, Res_id, Status, Discount)
-    VALUES
-        (CAST(@Counter AS NVARCHAR), @ReservationId, @PaymentStatus, @Discount);
+        (@Counter, @CustomerId, DATEADD(DAY, FLOOR(RAND() * 365), '2023-01-01'), @PaymentOnReservationTime, @Discount, DATEADD(MINUTE, FLOOR(RAND() * 1440), '00:00:00'), FLOOR(RAND() * 10) + 1);
 
     SET @Counter = @Counter + 1;
-    SET @ReservationId = @ReservationId + 1;
 END;
 
-
-
 select * from Reservations;
-select * from Reservations_Payment;
 
 
+--reports
+
+--1 
+CREATE  VIEW MostPopularItemsMonthly AS
+SELECT
+    MONTH(o.Date_Of_Order) AS OrderMonth,
+    fi.FoodName AS PopularItem,
+    COUNT(od.Food_Id) AS OrderCount
+FROM
+    Orders o
+JOIN
+    OrderDetails od ON o.OrderId = od.Order_Id
+JOIN
+    Food_items fi ON od.Food_Id = fi.FoodID
+GROUP BY
+    MONTH(o.Date_Of_Order), fi.FoodName;
+
+	select * from MostPopularItemsMonthly;
+
+--2 
+
+CREATE VIEW MonthlyRevenueGeneration AS
+WITH RankedRevenue AS (
+    SELECT
+        MONTH(o.Date_Of_Order) AS OrderMonth,
+        CASE 
+            WHEN op.Status = 'Fulfilled' THEN 'Success'
+            ELSE 'Failure'
+        END AS OrderStatus,
+        SUM(od.Food_Quantity * fi.Price) AS Revenue,
+        ROW_NUMBER() OVER (PARTITION BY MONTH(o.Date_Of_Order) ORDER BY SUM(od.Food_Quantity * fi.Price) DESC) AS RN
+    FROM
+        Orders o
+    JOIN
+        OrderDetails od ON o.OrderId = od.Order_Id
+    JOIN
+        Food_items fi ON od.Food_Id = fi.FoodID
+    JOIN
+        OrdersPayment op ON o.OrderId = op.Order_Id
+    GROUP BY
+        MONTH(o.Date_Of_Order), 
+        CASE 
+            WHEN op.Status = 'Fulfilled' THEN 'Success'
+            ELSE 'Failure'
+        END
+)
+SELECT
+    OrderMonth,
+    OrderStatus,
+    Revenue
+FROM
+    RankedRevenue
+WHERE
+    RN = 1;
+
+	SELECT * FROM MonthlyRevenueGeneration;
+
+
+	--3 Monthly salary per employee.
+	SELECT
+    e.EmpId,
+    e.Name AS EmployeeName,
+    MONTH(o.Date_Of_Order) AS OrderMonth,
+    COUNT(od.Food_Id) AS OrdersServed,
+    COUNT(od.Food_Id) * MAX(e.PER_ORDER_RATE) AS MonthlySalary
+FROM
+    Employees e
+JOIN
+    OrderDetails od ON e.EmpId = od.Employee_Id
+JOIN
+    Orders o ON od.Order_Id = o.OrderId
+GROUP BY
+    e.EmpId, e.Name, MONTH(o.Date_Of_Order)
+ORDER BY
+    OrderMonth, EmployeeName;
+
+	--4 Successfull reservation count Monthly
+
+
+	WITH MonthlyReservations AS (
+    SELECT
+        r.Table_Number,
+        MONTH(r.Reservation_Date) AS ReservationMonth,
+        COUNT(r.ReservationId) AS ReservationCount
+    FROM
+        Reservations r
+    WHERE
+        r.Payment_On_ReservationTime = 'yes' -- Consider only successful reservations
+    GROUP BY
+        r.Table_Number, MONTH(r.Reservation_Date)
+)
+
+SELECT
+    MR.ReservationMonth,
+    MR.Table_Number AS MostSuccessfulTable,
+    MR.ReservationCount AS ReservationCount
+FROM
+    MonthlyReservations MR
+JOIN (
+    SELECT
+        ReservationMonth,
+        MAX(ReservationCount) AS MaxReservationCount
+    FROM
+        MonthlyReservations
+    GROUP BY
+        ReservationMonth
+) MaxReservations ON MR.ReservationMonth = MaxReservations.ReservationMonth
+   AND MR.ReservationCount = MaxReservations.MaxReservationCount
+ORDER BY
+    MR.ReservationMonth;
+
+ --5 
+
+
+
+
+	
