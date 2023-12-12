@@ -103,66 +103,114 @@ VALUES
     (39, 'Areeba Hashmi', 33, '321 Cedar Court, Cityburg', '555-9999', 'Regular Customer'),
     (40, 'Babar Khan', 29, '765 Oak Avenue, Countryside', '555-0000', 'Non-Regular Customer');
 	
-	CREATE TABLE Food_items (
+	CREATE TABLE Food_item (
     FoodID INT PRIMARY KEY,
-    FoodName NVARCHAR(255) NOT NULL,
-    Price NUMERIC(8, 2) NOT NULL,
-    StockNumber INT DEFAULT 10 CHECK (StockNumber >= 0));
-INSERT INTO Food_items (FoodID, FoodName, Price, StockNumber)
-VALUES
-    (1, 'Pizza', 12.99, 50),
-    (2, 'Burger', 6.99, 30),
-    (3, 'Salad', 8.49, 20),
-    (4, 'Pasta', 10.99, 40),
-    (5, 'Chicken Sandwich', 9.99, 25),
-    (6, 'Ice Cream', 4.99, 60),
-    (7, 'Sushi', 14.99, 15),
-    (8, 'Steak', 18.99, 10),
-    (9, 'Vegetarian Wrap', 7.99, 35),
-    (10, 'Shrimp Scampi', 16.99, 18),
-	(11, 'Vegetable Stir Fry', 9.49, 25),
-    (12, 'Spaghetti Bolognese', 11.99, 30),
-    (13, 'Grilled Salmon', 15.99, 20),
-    (14, 'Caesar Salad', 7.99, 35),
-    (15, 'Mushroom Risotto', 13.49, 22),
-    (16, 'Chocolate Cake', 5.99, 40),
-    (17, 'Chicken Alfredo', 12.99, 28),
-    (18, 'Caprese Sandwich', 8.99, 15),
-    (19, 'Fish Tacos', 10.49, 18),
-    (20, 'Shrimp and Grits', 14.49, 12),
-	(21, 'Biryani', 11.99, 25),
-    (22, 'Chicken Karahi', 20.00, 10),
-    (23, 'Palak Paneer', 9.99, 30),
-    (24, 'Dal Makhani', 8.49, 35),
-    (25, 'Dehi bhlly', 7.99, 25),
-    (26, 'Tandoori Chicken', 14.49, 25),
-    (27, 'Greek Salad', 9.99, 30),
-    (28, 'Lobster Bisque', 16.99, 15),
-    (29, 'Beef Tacos', 11.49, 20),
-    (30, 'Tomato Basil Pasta', 12.99, 22),
-    (31, 'Fried Rice', 8.99, 18),
-    (32, 'Cheese Pizza', 10.99, 25),
-    (33, 'Veggie Burger', 7.49, 28),
-    (34, 'Clam Chowder', 13.99, 12),
-    (35, 'Pho Noodle Soup', 9.99, 25),
-    (36, 'Cobb Salad', 11.49, 30),
-    (37, 'Hawaiian Pizza', 12.99, 20),
-    (38, 'Shawarma Wrap', 8.49, 35),
-    (39, 'Cherry Cheesecake', 6.99, 40),
-    (40, 'Mango Lassi', 4.49, 50),
-    (41, 'Chicken Tikka Masala', 15.99, 18),
-    (42, 'Spinach and Artichoke Dip', 7.99, 22),
-    (43, 'Pineapple Fried Rice', 10.49, 15),
-    (44, 'Avocado Toast', 9.49, 28),
-    (45, 'Mango Sorbet', 5.49, 35);
+    FoodName NVARCHAR(255) NOT NULL
+);
+CREATE TABLE FoodItemsDetails (
+    FoodDetailsID varchar(10) PRIMARY KEY,
+    Food_ID INT FOREIGN KEY REFERENCES Food_item(FoodID),
+    StockNumber INT DEFAULT 10 CHECK (StockNumber >= 0),
+    CostPrice NUMERIC(8, 2) NOT NULL,
+    SellPrice NUMERIC(8, 2) NOT NULL CHECK (SellPrice >= 0),
+    CONSTRAINT CHK_COST_LESS_THAN_SELL CHECK (CostPrice <= SellPrice)
+);
 
-Drop table OrderDetails;
-  Drop table OrdersPayment;
-  Drop table Orders;
-  Drop table Food_items;
-  Drop table Employees;
-  Drop table Customer;
-  Drop table Reservations;
+INSERT INTO Food_item (FoodID, FoodName)
+VALUES
+    (1, 'Pizza'),
+    (2, 'Burger'),
+    (3, 'Salad'),
+    (4, 'Pasta'),
+    (5, 'Chicken Sandwich'),
+    (6, 'Ice Cream'),
+    (7, 'Sushi'),
+    (8, 'Steak'),
+    (9, 'Vegetarian Wrap'),
+    (10, 'Shrimp Scampi'),
+    (11, 'Vegetable Stir Fry'),
+    (12, 'Spaghetti Bolognese'),
+    (13, 'Grilled Salmon'),
+    (14, 'Caesar Salad'),
+    (15, 'Mushroom Risotto'),
+    (16, 'Chocolate Cake'),
+    (17, 'Chicken Alfredo'),
+    (18, 'Caprese Sandwich'),
+    (19, 'Fish Tacos'),
+    (20, 'Shrimp and Grits'),
+    (21, 'Biryani'),
+    (22, 'Chicken Karahi'),
+    (23, 'Palak Paneer'),
+    (24, 'Dal Makhani'),
+    (25, 'Dehi bhlly'),
+    (26, 'Tandoori Chicken'),
+    (27, 'Greek Salad'),
+    (28, 'Lobster Bisque'),
+    (29, 'Beef Tacos'),
+    (30, 'Tomato Basil Pasta'),
+    (31, 'Fried Rice'),
+    (32, 'Cheese Pizza'),
+    (33, 'Veggie Burger'),
+    (34, 'Clam Chowder'),
+    (35, 'Pho Noodle Soup'),
+    (36, 'Cobb Salad'),
+    (37, 'Hawaiian Pizza'),
+    (38, 'Shawarma Wrap'),
+    (39, 'Cherry Cheesecake'),
+    (40, 'Mango Lassi'),
+    (41, 'Chicken Tikka Masala'),
+    (42, 'Spinach and Artichoke Dip'),
+    (43, 'Pineapple Fried Rice'),
+    (44, 'Avocado Toast'),
+    (45, 'Mango Sorbet');
+
+	INSERT INTO FoodItemsDetails (FoodDetailsID, Food_ID, StockNumber, CostPrice, SellPrice)
+VALUES
+    ('F1', 1, 50, 12.99, 15.04),   -- Pizza
+    ('F2', 2, 30, 6.99, 8.04),     -- Burger
+    ('F3', 3, 20, 8.49, 9.76),     -- Salad
+    ('F4', 4, 40, 10.99, 12.64),   -- Pasta
+    ('F5', 5, 25, 9.99, 11.49),    -- Chicken Sandwich
+    ('F6', 6, 60, 4.99, 5.74),     -- Ice Cream
+    ('F7', 7, 15, 14.99, 17.24),   -- Sushi
+    ('F8', 8, 10, 18.99, 21.84),   -- Steak
+    ('F9', 9, 35, 7.99, 9.19),     -- Vegetarian Wrap
+    ('F10', 10, 18, 16.99, 19.54), -- Shrimp Scampi
+    ('F11', 11, 25, 9.49, 10.91),  -- Vegetable Stir Fry
+    ('F12', 12, 30, 11.99, 13.79), -- Spaghetti Bolognese
+    ('F13', 13, 20, 15.99, 18.39), -- Grilled Salmon
+    ('F14', 14, 35, 7.99, 9.19),   -- Caesar Salad
+    ('F15', 15, 22, 13.49, 15.51), -- Mushroom Risotto
+    ('F16', 16, 40, 5.99, 6.89),   -- Chocolate Cake
+    ('F17', 17, 28, 12.99, 14.94), -- Chicken Alfredo
+    ('F18', 18, 15, 8.99, 10.34),  -- Caprese Sandwich
+    ('F19', 19, 18, 10.49, 12.11), -- Fish Tacos
+    ('F20', 20, 12, 14.49, 16.71), -- Shrimp and Grits
+    ('F21', 21, 25, 11.99, 13.79), -- Biryani
+    ('F22', 22, 10, 20.00, 23.00), -- Chicken Karahi
+    ('F23', 23, 30, 9.99, 11.49),  -- Palak Paneer
+    ('F24', 24, 35, 8.49, 9.77),   -- Dal Makhani
+    ('F25', 25, 25, 7.99, 9.19),   -- Dehi bhlly
+    ('F26', 26, 25, 14.49, 16.71), -- Tandoori Chicken
+    ('F27', 27, 30, 9.99, 11.49),  -- Greek Salad
+    ('F28', 28, 15, 16.99, 19.54), -- Lobster Bisque
+    ('F29', 29, 20, 11.49, 13.24), -- Beef Tacos
+    ('F30', 30, 22, 12.99, 14.94), -- Tomato Basil Pasta
+    ('F31', 31, 18, 8.99, 10.34),  -- Fried Rice
+    ('F32', 32, 25, 10.99, 12.64), -- Cheese Pizza
+    ('F33', 33, 28, 7.49, 8.61),   -- Veggie Burger
+    ('F34', 34, 12, 13.99, 16.09), -- Clam Chowder
+    ('F35', 35, 25, 9.99, 11.49),  -- Pho Noodle Soup
+    ('F36', 36, 30, 11.49, 13.24), -- Cobb Salad
+    ('F37', 37, 20, 12.99, 14.94), -- Hawaiian Pizza
+    ('F38', 38, 35, 8.49, 9.77),   -- Shawarma Wrap
+    ('F39', 39, 40, 6.99, 8.04),   -- Cherry Cheesecake
+    ('F40', 40, 50, 4.49, 5.16),   -- Mango Lassi
+    ('F41', 41, 18, 15.99, 18.39), -- Chicken Tikka Masala
+    ('F42', 42, 22, 7.99, 9.19),   -- Spinach and Artichoke Dip
+    ('F43', 43, 15, 10.49, 12.11), -- Pineapple Fried Rice
+    ('F44', 44, 28, 9.49, 10.91),  -- Avocado Toast
+    ('F45', 45, 35, 5.49, 6.31);   -- Mango Sorbet
 
 	
 
@@ -172,19 +220,20 @@ CREATE TABLE Orders (
     Time_Of_Order TIME
 );
 
+
 CREATE TABLE OrderDetails (
     id INT,
     Order_Id INT,
-    Food_Id INT,
+    Served_Food_Id INT,
     Customer_Id INT,
     Food_Quantity INT,
-    Employee_Id INT,
+    OrderHandleBy_Employee_Id INT,
 	Discount Numeric(5,2) Default 0,
     PRIMARY KEY (id, Order_Id),
     CONSTRAINT FK_ORDERDETAILS_OrderId FOREIGN KEY (Order_Id) REFERENCES Orders (OrderId),
     CONSTRAINT FK_ORDERDETAILS_CustomerId FOREIGN KEY (Customer_Id) REFERENCES Customer (CustomerID),
-    CONSTRAINT FK_ORDERDETAILS_FoodId FOREIGN KEY (Food_Id) REFERENCES Food_items (FoodID),
-    CONSTRAINT FK_ORDERDETAILS_EmpId FOREIGN KEY (Employee_Id) REFERENCES Employees (EmpId),
+    CONSTRAINT FK_ORDERDETAILS_FoodId FOREIGN KEY (Served_Food_Id) REFERENCES Food_item (FoodID),
+    CONSTRAINT FK_ORDERDETAILS_EmpId FOREIGN KEY (OrderHandleBy_Employee_Id) REFERENCES Employees (EmpId),
     CONSTRAINT CHK_ORDERDETAILS_FoodQuantity CHECK (Food_Quantity >= 0)
 );
 
@@ -194,7 +243,7 @@ CREATE TABLE OrdersPayment (
     Order_Id INT,
     Status VARCHAR(50),
     PaymentMethod VARCHAR(50),
-    -- Add more columns as needed
+   
     CONSTRAINT FK_ORDERSPAYMENT_OrderDetailsId 
         FOREIGN KEY (id, Order_Id) 
         REFERENCES OrderDetails (id, Order_Id)
@@ -225,7 +274,7 @@ BEGIN
         (@Counter, DATEADD(DAY, FLOOR(RAND() * @DaysInMonth) + 1, '2023-' + CAST(@Month AS NVARCHAR) + '-01'), 
         DATEADD(MINUTE, @RandomMinutes, '00:00:00'));
 
-    INSERT INTO OrderDetails (id, Order_Id, Food_Id, Customer_Id, Food_Quantity, Employee_Id, Discount)
+    INSERT INTO OrderDetails (id, Order_Id, Served_Food_Id, Customer_Id, Food_Quantity, OrderHandleBy_Employee_Id, Discount)
     VALUES
         (@OrderDetailId, @Counter, @FoodId, @CustomerId, @FoodQuantity, @EmployeeId, @Discount);
 
@@ -257,7 +306,7 @@ CREATE TABLE Reservations (
 );
 
 
-Delete from Reservations;
+
 
 DECLARE @Counter INT = 1;
 
@@ -280,118 +329,242 @@ select * from Reservations;
 
 --reports
 
---1 
-CREATE  VIEW MostPopularItemsMonthly AS
-SELECT
-    MONTH(o.Date_Of_Order) AS OrderMonth,
-    fi.FoodName AS PopularItem,
-    COUNT(od.Food_Id) AS OrderCount
-FROM
-    Orders o
-JOIN
-    OrderDetails od ON o.OrderId = od.Order_Id
-JOIN
-    Food_items fi ON od.Food_Id = fi.FoodID
-GROUP BY
-    MONTH(o.Date_Of_Order), fi.FoodName;
+--1 PROCEDURE MostPopularItemsMonthly
 
-	select * from MostPopularItemsMonthly;
+CREATE PROCEDURE MostPopularItemsMonthly
+AS
+BEGIN
+    SET NOCOUNT ON;
 
---2 
+    IF OBJECT_ID('tempdb..#TempResults') IS NOT NULL
+        DROP TABLE #TempResults;
 
-CREATE VIEW MonthlyRevenueGeneration AS
-WITH RankedRevenue AS (
+    CREATE TABLE #TempResults (
+        OrderMonth INT,
+        PopularItem NVARCHAR(255),
+        OrderCount INT
+    );
+
+    INSERT INTO #TempResults (OrderMonth, PopularItem, OrderCount)
     SELECT
         MONTH(o.Date_Of_Order) AS OrderMonth,
-        CASE 
-            WHEN op.Status = 'Fulfilled' THEN 'Success'
-            ELSE 'Failure'
-        END AS OrderStatus,
-        SUM(od.Food_Quantity * fi.Price) AS Revenue,
-        ROW_NUMBER() OVER (PARTITION BY MONTH(o.Date_Of_Order) ORDER BY SUM(od.Food_Quantity * fi.Price) DESC) AS RN
+        fi.FoodName AS PopularItem,
+        COUNT(od.Served_Food_ID) AS OrderCount
     FROM
         Orders o
     JOIN
         OrderDetails od ON o.OrderId = od.Order_Id
     JOIN
-        Food_items fi ON od.Food_Id = fi.FoodID
-    JOIN
-        OrdersPayment op ON o.OrderId = op.Order_Id
+        Food_item fi ON od.Served_Food_ID = fi.FoodID
     GROUP BY
-        MONTH(o.Date_Of_Order), 
-        CASE 
-            WHEN op.Status = 'Fulfilled' THEN 'Success'
-            ELSE 'Failure'
-        END
-)
-SELECT
-    OrderMonth,
-    OrderStatus,
-    Revenue
-FROM
-    RankedRevenue
-WHERE
-    RN = 1;
+        MONTH(o.Date_Of_Order), fi.FoodName;
 
-	SELECT * FROM MonthlyRevenueGeneration;
+    SELECT * FROM #TempResults;
 
+    DROP TABLE #TempResults;
+END;
+
+EXEC MostPopularItemsMonthly;
+
+--2 
+
+CREATE PROCEDURE GenerateMonthlyRevenue
+AS
+BEGIN
+    WITH RankedRevenue AS (
+        SELECT
+            MONTH(o.Date_Of_Order) AS OrderMonth,
+            CASE 
+                WHEN op.Status = 'Fulfilled' THEN 'Success'
+                ELSE 'Failure'
+            END AS OrderStatus,
+            SUM(od.Food_Quantity * fid.SellPrice) AS Revenue,
+            ROW_NUMBER() OVER (PARTITION BY MONTH(o.Date_Of_Order) ORDER BY SUM(od.Food_Quantity * fid.SellPrice) DESC) AS RN
+        FROM
+            Orders o
+        JOIN
+            OrderDetails od ON o.OrderId = od.Order_Id
+        JOIN
+            Food_item fi ON od.Served_Food_Id = fi.FoodID
+        JOIN
+            FoodItemsDetails fid ON fi.FoodID = fid.Food_ID
+        JOIN
+            OrdersPayment op ON o.OrderId = op.Order_Id
+        GROUP BY
+            MONTH(o.Date_Of_Order), 
+            CASE 
+                WHEN op.Status = 'Fulfilled' THEN 'Success'
+                ELSE 'Failure'
+            END
+    )
+    SELECT
+        OrderMonth,
+        OrderStatus,
+        Revenue
+    INTO
+        MonthlyRevenue
+    FROM
+        RankedRevenue
+    WHERE
+        RN = 1;
+END;
+
+EXEC GenerateMonthlyRevenue;
+SELECT * FROM MonthlyRevenue;
 
 	--3 Monthly salary per employee.
-	SELECT
-    e.EmpId,
-    e.Name AS EmployeeName,
-    MONTH(o.Date_Of_Order) AS OrderMonth,
-    COUNT(od.Food_Id) AS OrdersServed,
-    COUNT(od.Food_Id) * MAX(e.PER_ORDER_RATE) AS MonthlySalary
-FROM
-    Employees e
-JOIN
-    OrderDetails od ON e.EmpId = od.Employee_Id
-JOIN
-    Orders o ON od.Order_Id = o.OrderId
-GROUP BY
-    e.EmpId, e.Name, MONTH(o.Date_Of_Order)
-ORDER BY
-    OrderMonth, EmployeeName;
+	CREATE PROCEDURE GenerateEmployeePerformanceReport
+AS
+BEGIN
+    SELECT
+        e.EmpId,
+        e.Name AS EmployeeName,
+        MONTH(o.Date_Of_Order) AS OrderMonth,
+        COUNT(od.Served_Food_Id) AS OrdersServed,
+        COUNT(od.Served_Food_Id) * MAX(e.PER_ORDER_RATE) AS MonthlySalary
+    INTO
+        EmployeePerformanceReport
+    FROM
+        Employees e
+    JOIN
+        OrderDetails od ON e.EmpId = od.OrderHandleBy_Employee_Id
+    JOIN
+        Orders o ON od.Order_Id = o.OrderId
+    GROUP BY
+        e.EmpId, e.Name, MONTH(o.Date_Of_Order)
+    ORDER BY
+        OrderMonth, EmployeeName;
+END;
+
+EXEC GenerateEmployeePerformanceReport;
+
+-- View the result
+SELECT * FROM EmployeePerformanceReport;
+
+
 
 	--4 Successfull reservation count Monthly
 
 
-	WITH MonthlyReservations AS (
+ CREATE TABLE MonthlySuccessfulReservationsReport (
+    ReservationMonth INT,
+    MostSuccessfulTable INT,
+    ReservationCount INT
+);
+Drop table MonthlySuccessfulReservationsReport;
+
+
+IF OBJECT_ID('MonthlySuccessfulReservationsReport', 'V') IS NOT NULL
+    DROP VIEW MonthlySuccessfulReservationsReport;
+
+
+CREATE OR ALTER PROCEDURE GenerateMonthlySuccessfulReservationsReport
+AS
+BEGIN
+    WITH MonthlyReservations AS (
+        SELECT
+            r.Table_Number,
+            MONTH(r.Reservation_Date) AS ReservationMonth,
+            COUNT(r.ReservationId) AS ReservationCount
+        FROM
+            Reservations r
+        WHERE
+            r.Payment_On_ReservationTime = 'yes'
+        GROUP BY
+            r.Table_Number, MONTH(r.Reservation_Date)
+    )
+
     SELECT
-        r.Table_Number,
-        MONTH(r.Reservation_Date) AS ReservationMonth,
-        COUNT(r.ReservationId) AS ReservationCount
+        MR.ReservationMonth,
+        MR.Table_Number AS MostSuccessfulTable,
+        MR.ReservationCount AS ReservationCount
+    INTO
+        MonthlySuccessfulReservationsReport
     FROM
-        Reservations r
-    WHERE
-        r.Payment_On_ReservationTime = 'yes' -- Consider only successful reservations
-    GROUP BY
-        r.Table_Number, MONTH(r.Reservation_Date)
-)
+        MonthlyReservations MR
+    JOIN (
+        SELECT
+            ReservationMonth,
+            MAX(ReservationCount) AS MaxReservationCount
+        FROM
+            MonthlyReservations
+        GROUP BY
+            ReservationMonth
+    ) MaxReservations ON MR.ReservationMonth = MaxReservations.ReservationMonth
+       AND MR.ReservationCount = MaxReservations.MaxReservationCount
+    ORDER BY
+        MR.ReservationMonth;
+END;
 
-SELECT
-    MR.ReservationMonth,
-    MR.Table_Number AS MostSuccessfulTable,
-    MR.ReservationCount AS ReservationCount
-FROM
-    MonthlyReservations MR
-JOIN (
+ 
+
+
+
+ EXEC GenerateMonthlySuccessfulReservationsReport;
+
+-- View the result
+SELECT * FROM MonthlySuccessfulReservationsReport;
+
+
+
+--5 
+IF OBJECT_ID('GeneratePeakReservationHoursReport', 'P') IS NOT NULL
+    DROP PROCEDURE GeneratePeakReservationHoursReport;
+
+-- Drop the table if it already exists
+IF OBJECT_ID('PeakReservationHoursReport', 'U') IS NOT NULL
+    DROP TABLE PeakReservationHoursReport;
+
+-- Create the table
+CREATE TABLE PeakReservationHoursReport (
+    ReservationHour INT,
+    ReservationCount INT
+);
+
+
+
+
+-- Create the stored procedure
+CREATE or ALTER PROCEDURE GeneratePeakReservationHoursReport
+AS
+BEGIN
+    WITH PeakHours AS (
+        SELECT
+            DATEPART(HOUR, r.Reservation_Time) AS ReservationHour,
+            COUNT(r.ReservationId) AS ReservationCount
+        FROM
+            Reservations r
+        WHERE
+            r.Payment_On_ReservationTime = 'yes'
+        GROUP BY
+            DATEPART(HOUR, r.Reservation_Time)
+    )
+
     SELECT
-        ReservationMonth,
-        MAX(ReservationCount) AS MaxReservationCount
+        PH.ReservationHour,
+        PH.ReservationCount
+    INTO
+        PeakReservationHoursReport
     FROM
-        MonthlyReservations
-    GROUP BY
-        ReservationMonth
-) MaxReservations ON MR.ReservationMonth = MaxReservations.ReservationMonth
-   AND MR.ReservationCount = MaxReservations.MaxReservationCount
-ORDER BY
-    MR.ReservationMonth;
+        PeakHours PH
+    JOIN (
+        SELECT
+            ReservationHour,
+            MAX(ReservationCount) AS MaxReservationCount
+        FROM
+            PeakHours
+        GROUP BY
+            ReservationHour
+    ) MaxReservations ON PH.ReservationHour = MaxReservations.ReservationHour
+       AND PH.ReservationCount = MaxReservations.MaxReservationCount
+    ORDER BY
+        PH.ReservationHour;
+END;
 
- --5 
 
+EXEC GeneratePeakReservationHoursReport;
 
+-- View the result
 
+Select * from PeakReservationHoursReport;;
 
-	
