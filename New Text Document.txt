@@ -1,0 +1,241 @@
+--reports
+
+--1 PROCEDURE MostPopularItemsMonthly
+
+CREATE PROCEDURE MostPopularItemsMonthly
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF OBJECT_ID('tempdb..#TempResults') IS NOT NULL
+        DROP TABLE #TempResults;
+
+    CREATE TABLE #TempResults (
+        OrderMonth INT,
+        PopularItem NVARCHAR(255),
+        OrderCount INT
+    );
+
+    INSERT INTO #TempResults (OrderMonth, PopularItem, OrderCount)
+    SELECT
+        MONTH(o.Date_Of_Order) AS OrderMonth,
+        fi.FoodName AS PopularItem,
+        COUNT(od.Served_Food_ID) AS OrderCount
+    FROM
+        Orders o
+    JOIN
+        OrderDetails od ON o.OrderId = od.Order_Id
+    JOIN
+        Food_item fi ON od.Served_Food_ID = fi.FoodID
+    GROUP BY
+        MONTH(o.Date_Of_Order), fi.FoodName;
+
+    SELECT * FROM #TempResults;
+
+    DROP TABLE #TempResults;
+END;
+
+EXEC MostPopularItemsMonthly;
+
+--2 
+
+CREATE PROCEDURE GenerateMonthlyRevenue
+AS
+BEGIN
+    WITH RankedRevenue AS (
+        SELECT
+            MONTH(o.Date_Of_Order) AS OrderMonth,
+            CASE 
+                WHEN op.Status = 'Fulfilled' THEN 'Success'
+                ELSE 'Failure'
+            END AS OrderStatus,
+            SUM(od.Food_Quantity * fid.SellPrice) AS Revenue,
+            ROW_NUMBER() OVER (PARTITION BY MONTH(o.Date_Of_Order) ORDER BY SUM(od.Food_Quantity * fid.SellPrice) DESC) AS RN
+        FROM
+            Orders o
+        JOIN
+            OrderDetails od ON o.OrderId = od.Order_Id
+        JOIN
+            Food_item fi ON od.Served_Food_Id = fi.FoodID
+        JOIN
+            FoodItemsDetails fid ON fi.FoodID = fid.Food_ID
+        JOIN
+            OrdersPayment op ON o.OrderId = op.Order_Id
+        GROUP BY
+            MONTH(o.Date_Of_Order), 
+            CASE 
+                WHEN op.Status = 'Fulfilled' THEN 'Success'
+                ELSE 'Failure'
+            END
+    )
+    SELECT
+        OrderMonth,
+        OrderStatus,
+        Revenue
+    INTO
+        MonthlyRevenue
+    FROM
+        RankedRevenue
+    WHERE
+        RN = 1;
+END;
+
+EXEC GenerateMonthlyRevenue;
+SELECT * FROM MonthlyRevenue;
+
+	--3 Monthly salary per employee.
+	CREATE PROCEDURE GenerateEmployeePerformanceReport
+AS
+BEGIN
+    SELECT
+        e.EmpId,
+        e.Name AS EmployeeName,
+        MONTH(o.Date_Of_Order) AS OrderMonth,
+        COUNT(od.Served_Food_Id) AS OrdersServed,
+        COUNT(od.Served_Food_Id) * MAX(e.PER_ORDER_RATE) AS MonthlySalary
+    INTO
+        EmployeePerformanceReport
+    FROM
+        Employees e
+    JOIN
+        OrderDetails od ON e.EmpId = od.OrderHandleBy_Employee_Id
+    JOIN
+        Orders o ON od.Order_Id = o.OrderId
+    GROUP BY
+        e.EmpId, e.Name, MONTH(o.Date_Of_Order)
+    ORDER BY
+        OrderMonth, EmployeeName;
+END;
+
+EXEC GenerateEmployeePerformanceReport;
+
+-- View the result
+SELECT * FROM EmployeePerformanceReport;
+
+
+
+	--4 Successfull reservation count Monthly
+
+
+ CREATE TABLE MonthlySuccessfulReservationsReport (
+    ReservationMonth INT,
+    MostSuccessfulTable INT,
+    ReservationCount INT
+);
+Drop table MonthlySuccessfulReservationsReport;
+
+
+IF OBJECT_ID('MonthlySuccessfulReservationsReport', 'V') IS NOT NULL
+    DROP VIEW MonthlySuccessfulReservationsReport;
+
+
+CREATE OR ALTER PROCEDURE GenerateMonthlySuccessfulReservationsReport
+AS
+BEGIN
+    WITH MonthlyReservations AS (
+        SELECT
+            r.Table_Number,
+            MONTH(r.Reservation_Date) AS ReservationMonth,
+            COUNT(r.ReservationId) AS ReservationCount
+        FROM
+            Reservations r
+        WHERE
+            r.Payment_On_ReservationTime = 'yes'
+        GROUP BY
+            r.Table_Number, MONTH(r.Reservation_Date)
+    )
+
+    SELECT
+        MR.ReservationMonth,
+        MR.Table_Number AS MostSuccessfulTable,
+        MR.ReservationCount AS ReservationCount
+    INTO
+        MonthlySuccessfulReservationsReport
+    FROM
+        MonthlyReservations MR
+    JOIN (
+        SELECT
+            ReservationMonth,
+            MAX(ReservationCount) AS MaxReservationCount
+        FROM
+            MonthlyReservations
+        GROUP BY
+            ReservationMonth
+    ) MaxReservations ON MR.ReservationMonth = MaxReservations.ReservationMonth
+       AND MR.ReservationCount = MaxReservations.MaxReservationCount
+    ORDER BY
+        MR.ReservationMonth;
+END;
+
+ 
+
+
+
+ EXEC GenerateMonthlySuccessfulReservationsReport;
+
+-- View the result
+SELECT * FROM MonthlySuccessfulReservationsReport;
+
+
+
+--5 
+IF OBJECT_ID('GeneratePeakReservationHoursReport', 'P') IS NOT NULL
+    DROP PROCEDURE GeneratePeakReservationHoursReport;
+
+-- Drop the table if it already exists
+IF OBJECT_ID('PeakReservationHoursReport', 'U') IS NOT NULL
+    DROP TABLE PeakReservationHoursReport;
+
+-- Create the table
+CREATE TABLE PeakReservationHoursReport (
+    ReservationHour INT,
+    ReservationCount INT
+);
+
+
+
+
+-- Create the stored procedure
+CREATE or ALTER PROCEDURE GeneratePeakReservationHoursReport
+AS
+BEGIN
+    WITH PeakHours AS (
+        SELECT
+            DATEPART(HOUR, r.Reservation_Time) AS ReservationHour,
+            COUNT(r.ReservationId) AS ReservationCount
+        FROM
+            Reservations r
+        WHERE
+            r.Payment_On_ReservationTime = 'yes'
+        GROUP BY
+            DATEPART(HOUR, r.Reservation_Time)
+    )
+
+    SELECT
+        PH.ReservationHour,
+        PH.ReservationCount
+    INTO
+        PeakReservationHoursReport
+    FROM
+        PeakHours PH
+    JOIN (
+        SELECT
+            ReservationHour,
+            MAX(ReservationCount) AS MaxReservationCount
+        FROM
+            PeakHours
+        GROUP BY
+            ReservationHour
+    ) MaxReservations ON PH.ReservationHour = MaxReservations.ReservationHour
+       AND PH.ReservationCount = MaxReservations.MaxReservationCount
+    ORDER BY
+        PH.ReservationHour;
+END;
+
+
+EXEC GeneratePeakReservationHoursReport;
+
+-- View the result
+
+Select * from PeakReservationHoursReport;;
+

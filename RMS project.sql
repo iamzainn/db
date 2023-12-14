@@ -238,6 +238,7 @@ CREATE TABLE OrderDetails (
 );
 
 
+
 CREATE TABLE OrdersPayment (
     id INT PRIMARY KEY,
     Order_Id INT,
@@ -292,6 +293,8 @@ BEGIN
     SET @Counter = @Counter + 1;
     SET @OrderDetailId = @OrderDetailId + 1;
 END;
+
+
 
 
 CREATE TABLE Reservations (
@@ -566,5 +569,138 @@ EXEC GeneratePeakReservationHoursReport;
 
 -- View the result
 
-Select * from PeakReservationHoursReport;;
+Select * from PeakReservationHoursReport;
+
+
+
+
+
+
+-- Create a stored procedure for inserting orders
+-- Create a stored procedure for inserting orders
+CREATE OR ALTER PROCEDURE InsertOrder
+    @OrderID INT,
+    @OrderDate DATE,
+    @OrderTime TIME,
+    @FoodID INT,
+    @CustomerID INT,
+    @EmployeeID INT,
+    @FoodQuantity INT,
+    @PaymentStatus VARCHAR(50),
+    @PaymentMethod VARCHAR(50)
+AS
+BEGIN
+    -- Check stock availability
+    DECLARE @AvailableStock INT;
+    SELECT @AvailableStock = StockNumber
+    FROM FoodItemsDetails
+    WHERE Food_ID = @FoodID;
+
+    -- Get customer type and set discount
+    DECLARE @CustomerType VARCHAR(50);
+    SELECT @CustomerType = CustomerType
+    FROM Customer
+    WHERE CustomerID = @CustomerID;
+
+    DECLARE @Discount NUMERIC(5, 2);
+
+    IF @CustomerType = 'Regular'
+        SET @Discount = 5.00; -- 5% discount for regular customers
+    ELSE
+        SET @Discount = 0.00; -- No discount for non-regular customers
+
+    IF @AvailableStock >= @FoodQuantity
+    BEGIN
+        -- Insert into Orders table
+        INSERT INTO Orders (OrderId, Date_Of_Order, Time_Of_Order)
+        VALUES (@OrderID, @OrderDate, @OrderTime);
+
+        -- Insert into OrderDetails table
+        INSERT INTO OrderDetails (id, Order_Id, Served_Food_Id, Customer_Id, Food_Quantity, OrderHandleBy_Employee_Id, Discount)
+        VALUES (@OrderID + 100, @OrderID, @FoodID, @CustomerID, @FoodQuantity, @EmployeeID, @Discount);
+
+        -- Update stock in FoodItemsDetails table
+        UPDATE FoodItemsDetails
+        SET StockNumber = StockNumber - @FoodQuantity
+        WHERE Food_ID = @FoodID;
+
+        -- Insert into OrdersPayment table
+        INSERT INTO OrdersPayment (id, Order_Id, Status, PaymentMethod)
+        VALUES (@OrderID + 100, @OrderID, @PaymentStatus, @PaymentMethod);
+
+        PRINT 'Order inserted successfully.';
+    END
+    ELSE
+    BEGIN
+        -- Throw an error if stock is insufficient
+        THROW 51000, 'Insufficient stock. Item is out of stock.', 1;
+    END
+END;
+
+EXEC InsertOrder
+    @OrderID = 5011,
+    @OrderDate = '2023-12-15',
+    @OrderTime = '14:30:00',
+    @FoodID = 1,
+    @CustomerID = 7,
+    @EmployeeID = 30,
+    @FoodQuantity = 12,
+    @PaymentStatus = 'Fulfilled',
+    @PaymentMethod = 'Cash';
+
+	select FoodName, FD.StockNumber from Food_item F
+	INNER JOIN FoodItemsDetails FD
+ 	ON FD.Food_ID = F.FoodID;
+
+CREATE OR ALTER PROCEDURE DeleteOrder
+    @OrderID INT
+AS
+BEGIN
+    -- Delete from OrdersPayment table
+    DELETE FROM OrdersPayment
+    WHERE Order_Id = @OrderID;
+
+    -- Delete from OrderDetails table
+    DELETE FROM OrderDetails
+    WHERE Order_Id = @OrderID;
+
+    -- Delete from Orders table
+    DELETE FROM Orders
+    WHERE OrderId = @OrderID;
+
+    PRINT 'Order deleted successfully.';
+END;
+EXECUTE DeleteOrder 3000;
+
+-- Create trigger to capture deleted order information
+
+CREATE TRIGGER TR_DeleteOrder
+ON Orders
+AFTER DELETE
+AS
+BEGIN
+    INSERT INTO DeletedOrderRecords (OrderID, DateOfOrder, Status)
+    SELECT OrderId, Date_Of_Order,'Deleted'
+    FROM deleted;
+END;
+
+
+
+EXEC DeleteOrder @OrderID = 3;
+
+Select * from Orders;
+Select * from OrderDetails;
+Select * from OrdersPayment;
+
+
+CREATE TABLE DeletedOrderRecords (
+    AuditTrailID INT PRIMARY KEY IDENTITY(1,1),
+    OrderID INT,
+    DateOfOrder DATE,
+    Status VARCHAR(50),
+    DeletedDate DATETIME DEFAULT GETDATE()
+);
+Drop table DeletedOrderRecords;
+
+Select * from DeletedOrderRecords;
 
