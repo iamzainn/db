@@ -116,6 +116,8 @@ CREATE TABLE FoodItemsDetails (
     CONSTRAINT CHK_COST_LESS_THAN_SELL CHECK (CostPrice <= SellPrice)
 );
 
+Select * from FoodItemsDetails;
+
 INSERT INTO Food_item (FoodID, FoodName)
 VALUES
     (1, 'Pizza'),
@@ -576,12 +578,10 @@ Select * from PeakReservationHoursReport;
 
 
 
--- Create a stored procedure for inserting orders
+
 -- Create a stored procedure for inserting orders
 CREATE OR ALTER PROCEDURE InsertOrder
     @OrderID INT,
-    @OrderDate DATE,
-    @OrderTime TIME,
     @FoodID INT,
     @CustomerID INT,
     @EmployeeID INT,
@@ -613,7 +613,7 @@ BEGIN
     BEGIN
         -- Insert into Orders table
         INSERT INTO Orders (OrderId, Date_Of_Order, Time_Of_Order)
-        VALUES (@OrderID, @OrderDate, @OrderTime);
+        VALUES (@OrderID, CONVERT(DATE, GETDATE()), CONVERT(TIME, GETDATE()));
 
         -- Insert into OrderDetails table
         INSERT INTO OrderDetails (id, Order_Id, Served_Food_Id, Customer_Id, Food_Quantity, OrderHandleBy_Employee_Id, Discount)
@@ -637,21 +637,47 @@ BEGIN
     END
 END;
 
+
 EXEC InsertOrder
-    @OrderID = 5011,
-    @OrderDate = '2023-12-15',
-    @OrderTime = '14:30:00',
-    @FoodID = 1,
+    @OrderID = 5012,
+    @FoodID = 6,
     @CustomerID = 7,
-    @EmployeeID = 30,
-    @FoodQuantity = 12,
+    @EmployeeID = 5,
+    @FoodQuantity = 2,
     @PaymentStatus = 'Fulfilled',
     @PaymentMethod = 'Cash';
 
-	select FoodName, FD.StockNumber from Food_item F
-	INNER JOIN FoodItemsDetails FD
- 	ON FD.Food_ID = F.FoodID;
 
+	CREATE OR ALTER PROCEDURE InsertFoodItem
+    @FoodID INT,
+    @FoodName NVARCHAR(255),
+    @StockNumber INT,
+    @CostPrice NUMERIC(8, 2),
+    @SellPrice NUMERIC(8, 2)
+AS
+BEGIN
+    -- Insert into Food_item table
+    INSERT INTO Food_item (FoodID, FoodName)
+    VALUES (@FoodID, @FoodName);
+
+    -- Insert into FoodItemsDetails table
+    INSERT INTO FoodItemsDetails (FoodDetailsID, Food_ID, StockNumber, CostPrice, SellPrice)
+    VALUES ('F' + CAST(@FoodID AS VARCHAR(10)), @FoodID, @StockNumber, @CostPrice, @SellPrice);
+
+    PRINT 'Food item inserted successfully.';
+END;
+
+
+
+EXEC InsertFoodItem
+    @FoodID = 46,
+    @FoodName = 'New Food Item',
+    @StockNumber = 20,
+    @CostPrice = 8.99,
+    @SellPrice = 12.99;
+
+	
+  --TRIGGERS FOR HISTORY MANAGEMENT;
 CREATE OR ALTER PROCEDURE DeleteOrder
     @OrderID INT
 AS
@@ -670,7 +696,7 @@ BEGIN
 
     PRINT 'Order deleted successfully.';
 END;
-EXECUTE DeleteOrder 3000;
+EXECUTE DeleteOrder 5;
 
 -- Create trigger to capture deleted order information
 
@@ -688,9 +714,7 @@ END;
 
 EXEC DeleteOrder @OrderID = 3;
 
-Select * from Orders;
-Select * from OrderDetails;
-Select * from OrdersPayment;
+
 
 
 CREATE TABLE DeletedOrderRecords (
@@ -700,7 +724,139 @@ CREATE TABLE DeletedOrderRecords (
     Status VARCHAR(50),
     DeletedDate DATETIME DEFAULT GETDATE()
 );
-Drop table DeletedOrderRecords;
+
 
 Select * from DeletedOrderRecords;
 
+
+-- Create historyrecordFoodItems table
+CREATE TABLE historyrecordFoodItems (
+    ChangeID INT PRIMARY KEY IDENTITY(1,1),
+    Food_ID INT,
+    OldSellPrice DECIMAL(8, 2),
+    NewSellPrice DECIMAL(8, 2),
+    ChangeDate DATETIME DEFAULT GETDATE()
+);
+
+
+CREATE OR ALTER PROCEDURE UpdateFoodItemSoldPrice
+    @FoodID INT,
+    @NewSoldPrice DECIMAL(8, 2)
+AS
+BEGIN
+    -- Update the sold price in FoodItemsDetails table
+    UPDATE FoodItemsDetails
+    SET SellPrice = @NewSoldPrice
+    WHERE Food_ID = @FoodID;
+
+    PRINT 'Sold price updated successfully.';
+END;
+
+CREATE Or alter TRIGGER TR_UpdateFoodItemSoldPrice
+ON FoodItemsDetails
+AFTER UPDATE
+AS
+BEGIN
+    IF UPDATE(SellPrice)
+    BEGIN
+        INSERT INTO historyrecordFoodItems (Food_ID, OldSellPrice, NewSellPrice, ChangeDate)
+        SELECT d.Food_ID, d.SellPrice AS OldSellPrice, i.SellPrice AS NewSellPrice, GETDATE()
+        FROM deleted d
+        JOIN inserted i ON d.FoodDetailsID = i.FoodDetailsID;
+    END;
+END;
+
+EXEC UpdateFoodItemSoldPrice @FoodID = 1, @NewSoldPrice = 15.99;
+
+Select * from historyrecordFoodItems;
+
+
+
+-- Create historyrecordOrders table
+CREATE TABLE historyrecordOrders (
+    ChangeID INT PRIMARY KEY IDENTITY(1,1),
+    OrderID INT,
+    OldDateOfOrder DATE,
+    NewDateOfOrder DATE,
+    ChangeDate DATETIME DEFAULT GETDATE()
+)
+
+
+CREATE OR ALTER TRIGGER TR_UpdateOrderDate
+ON Orders
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF UPDATE(Date_Of_Order)
+    BEGIN
+        INSERT INTO historyrecordOrders (OrderID, OldDateOfOrder, NewDateOfOrder, ChangeDate)
+        SELECT d.OrderID, d.Date_Of_Order, i.Date_Of_Order, GETDATE()
+        FROM deleted d
+        JOIN inserted i ON d.OrderID = i.OrderID;
+    END
+END;
+
+CREATE OR ALTER PROCEDURE UpdateOrderDate
+    @OrderID INT,
+    @NewDate DATE
+AS
+BEGIN
+    -- Update the Date_Of_Order column in the Orders table
+    UPDATE Orders
+    SET Date_Of_Order = @NewDate
+    WHERE OrderId = @OrderID;
+
+    -- Trigger the history record trigger manually
+    
+END;
+
+Select * FROM Orders WHERE OrderId = 20;
+EXEC UpdateOrderDate @OrderID = 20, @NewDate = '2023-05-01';
+
+SELECT * FROM historyrecordOrders;
+
+
+--views base
+
+CREATE VIEW CustomerOrderSummaryView AS
+SELECT
+    c.CustomerID,
+    c.Name AS CustomerName,
+    COUNT(od.Order_Id) AS TotalOrders,
+    SUM(od.Food_Quantity * fid.SellPrice) AS TotalAmountSpent
+FROM
+    Customer c
+LEFT JOIN
+    OrderDetails od ON c.CustomerID = od.Customer_Id
+LEFT JOIN
+    Food_item fi ON od.Served_Food_Id = fi.FoodID
+LEFT JOIN
+    FoodItemsDetails fid ON fi.FoodID = fid.Food_ID
+GROUP BY
+    c.CustomerID, c.Name;
+
+	
+
+	CREATE VIEW MonthlyAverageOrderView AS
+SELECT
+    MONTH(o.Date_Of_Order) AS Month,
+    YEAR(o.Date_Of_Order) AS Year,
+    AVG(CASE WHEN c.CustomerType = 'Regular Customer' THEN od.Food_Quantity * fid.SellPrice ELSE 0 END) AS AvgRegularCustomerOrder,
+    AVG(CASE WHEN c.CustomerType = 'Non-Regular Customer' THEN od.Food_Quantity * fid.SellPrice ELSE 0 END) AS AvgNonRegularCustomerOrder
+FROM
+    Orders o
+JOIN
+    OrderDetails od ON o.OrderId = od.Order_Id
+JOIN
+    Customer c ON od.Customer_Id = c.CustomerID
+JOIN
+    Food_item fi ON od.Served_Food_Id = fi.FoodID
+JOIN
+    FoodItemsDetails fid ON fi.FoodID = fid.Food_ID
+GROUP BY
+    YEAR(o.Date_Of_Order), MONTH(o.Date_Of_Order);
+
+
+	select * from MonthlyAverageOrderView;
