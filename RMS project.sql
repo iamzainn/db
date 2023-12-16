@@ -223,20 +223,25 @@ CREATE TABLE Orders (
 );
 
 
+drop table OrdersPayment;
+drop table OrderDetails;
+
 CREATE TABLE OrderDetails (
-    id INT,
-    Order_Id INT,
-    Served_Food_Id INT,
-    Customer_Id INT,
-    Food_Quantity INT,
-    OrderHandleBy_Employee_Id INT,
-	Discount Numeric(5,2) Default 0,
-    PRIMARY KEY (id, Order_Id),
-    CONSTRAINT FK_ORDERDETAILS_OrderId FOREIGN KEY (Order_Id) REFERENCES Orders (OrderId),
-    CONSTRAINT FK_ORDERDETAILS_CustomerId FOREIGN KEY (Customer_Id) REFERENCES Customer (CustomerID),
-    CONSTRAINT FK_ORDERDETAILS_FoodId FOREIGN KEY (Served_Food_Id) REFERENCES Food_item (FoodID),
-    CONSTRAINT FK_ORDERDETAILS_EmpId FOREIGN KEY (OrderHandleBy_Employee_Id) REFERENCES Employees (EmpId),
-    CONSTRAINT CHK_ORDERDETAILS_FoodQuantity CHECK (Food_Quantity >= 0)
+  id INT,
+  Order_Id INT,
+  Served_Food_Id INT,
+  Customer_Id INT,
+  Food_Quantity INT,
+  OrderHandleBy_Employee_Id INT,
+  Discount Numeric(5,2) Default 0,
+  PRIMARY KEY (id, Order_Id),
+
+  CONSTRAINT FK_ORDERDETAILS_OrderId FOREIGN KEY (Order_Id) REFERENCES Orders (OrderId),
+  CONSTRAINT FK_ORDERDETAILS_CustomerId FOREIGN KEY (Customer_Id) REFERENCES Customer (CustomerID),
+  CONSTRAINT FK_ORDERDETAILS_FoodId FOREIGN KEY (Served_Food_Id) REFERENCES Food_item (FoodID),
+  CONSTRAINT FK_ORDERDETAILS_EmpId FOREIGN KEY (OrderHandleBy_Employee_Id) REFERENCES Employees (EmpId),
+  CONSTRAINT CHK_ORDERDETAILS_FoodQuantity CHECK (Food_Quantity >= 0),
+ 
 );
 
 
@@ -250,7 +255,9 @@ CREATE TABLE OrdersPayment (
     CONSTRAINT FK_ORDERSPAYMENT_OrderDetailsId 
         FOREIGN KEY (id, Order_Id) 
         REFERENCES OrderDetails (id, Order_Id)
+		
 );
+
 
 DECLARE @Counter INT = 1;
 DECLARE @OrderDetailId INT = 101;
@@ -575,6 +582,65 @@ Select * from PeakReservationHoursReport;
 
 
 
+CREATE PROCEDURE GetOrdersByDate
+    @TargetDate DATE
+AS
+BEGIN
+    SELECT
+        o.OrderId,
+        o.Date_Of_Order,
+        o.Time_Of_Order,
+        od.id AS OrderDetailsId,
+        fi.FoodName,
+        od.Food_Quantity,
+        fid.SellPrice AS UnitPrice,
+        (od.Food_Quantity * fid.SellPrice) AS TotalPrice
+    FROM
+        Orders o
+    JOIN
+        OrderDetails od ON o.OrderId = od.Order_Id
+    JOIN
+        Food_item fi ON od.Served_Food_Id = fi.FoodID
+    JOIN
+        FoodItemsDetails fid ON fi.FoodID = fid.Food_ID
+    WHERE
+        o.Date_Of_Order = @TargetDate;
+END;
+
+
+EXEC GetOrdersByDate @TargetDate = '2023-01-05';
+
+CREATE PROCEDURE GetTableReservationCount
+    @MonthNumber INT,
+    @TableNumber INT
+AS
+BEGIN
+    DECLARE @DynamicSQL NVARCHAR(MAX);
+
+    SET @DynamicSQL = '
+        SELECT
+            r.Customer_Id,
+            c.Name AS CustomerName,
+            COUNT(r.ReservationId) AS ReservationCount
+        FROM
+            Reservations r
+        LEFT JOIN
+            Customer c ON r.Customer_Id = c.CustomerID
+        WHERE
+            MONTH(r.Reservation_Date) = ' + CAST(@MonthNumber AS NVARCHAR) + '
+            AND r.Table_Number = ' + CAST(@TableNumber AS NVARCHAR) + '
+        GROUP BY
+            r.Customer_Id, c.Name;';
+
+    EXEC sp_executesql @DynamicSQL;
+END;
+
+
+EXEC GetTableReservationCount @MonthNumber = 2, @TableNumber = 9;
+
+
+
+
 
 
 
@@ -712,7 +778,7 @@ END;
 
 
 
-EXEC DeleteOrder @OrderID = 3;
+EXEC DeleteOrder @OrderID = 24;
 
 
 
@@ -837,26 +903,30 @@ LEFT JOIN
 GROUP BY
     c.CustomerID, c.Name;
 
-	
+	select * from CustomerOrderSummaryView;
 
-	CREATE VIEW MonthlyAverageOrderView AS
+	Drop View if exists MonthlyAverageOrderView;
+	CREATE VIEW MonthlyAverageOrderView
+WITH SCHEMABINDING
+AS
 SELECT
     MONTH(o.Date_Of_Order) AS Month,
     YEAR(o.Date_Of_Order) AS Year,
     AVG(CASE WHEN c.CustomerType = 'Regular Customer' THEN od.Food_Quantity * fid.SellPrice ELSE 0 END) AS AvgRegularCustomerOrder,
     AVG(CASE WHEN c.CustomerType = 'Non-Regular Customer' THEN od.Food_Quantity * fid.SellPrice ELSE 0 END) AS AvgNonRegularCustomerOrder
 FROM
-    Orders o
+    dbo.Orders o
 JOIN
-    OrderDetails od ON o.OrderId = od.Order_Id
+    dbo.OrderDetails od ON o.OrderId = od.Order_Id
 JOIN
-    Customer c ON od.Customer_Id = c.CustomerID
+    dbo.Customer c ON od.Customer_Id = c.CustomerID
 JOIN
-    Food_item fi ON od.Served_Food_Id = fi.FoodID
+    dbo.Food_item fi ON od.Served_Food_Id = fi.FoodID
 JOIN
-    FoodItemsDetails fid ON fi.FoodID = fid.Food_ID
+    dbo.FoodItemsDetails fid ON fi.FoodID = fid.Food_ID
 GROUP BY
     YEAR(o.Date_Of_Order), MONTH(o.Date_Of_Order);
 
 
 	select * from MonthlyAverageOrderView;
+
